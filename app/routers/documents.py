@@ -2,11 +2,13 @@
 app/routers/documents.py — KYC and financial document attachment router.
 Stores files locally in zero-cost storage and tracks audit metadata.
 """
+import logging
 import os
+import re
 import uuid
-import shutil
 from pathlib import Path
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,11 +19,27 @@ from app.models import LoanApplication, LoanDocument, AuditLog, User
 from app.schemas import LoanDocumentResponse
 from app.auth.utils import get_current_user
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(tags=["Documents & KYC"])
 
-UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR = Path("uploads").resolve()
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 MAX_FILE_SIZE = 15 * 1024 * 1024  # 15 MB limit
+
+# Explicit allow-list: extension → expected MIME type prefix
+ALLOWED_TYPES: dict[str, str] = {
+    ".pdf": "application/pdf",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".txt": "text/",
+    ".csv": "text/",
+}
+
+# Sanitise filename to only alphanumeric, dashes, underscores, and dots
+_SAFE_FILENAME_RE = re.compile(r"[^\w.\-]")
 
 
 @router.post("/applications/{loan_id}/documents", response_model=LoanDocumentResponse, status_code=status.HTTP_201_CREATED)
@@ -40,33 +58,47 @@ async def upload_loan_document(
     if not loan:
         raise HTTPException(status_code=404, detail="Loan application not found")
 
-    # Validate file extension
+    # Validate file extension against allow-list
     original_filename = file.filename or "unnamed_document"
     ext = os.path.splitext(original_filename)[1].lower()
-    allowed_extensions = {".pdf", ".jpg", ".jpeg", ".png", ".webp", ".txt", ".csv"}
-    if ext not in allowed_extensions:
+    if ext not in ALLOWED_TYPES:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file extension '{ext}'. Allowed: {', '.join(allowed_extensions)}"
+            detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(ALLOWED_TYPES)}",
         )
 
-    # Prepare loan specific upload folder
+    # Validate MIME type (defence-in-depth: don't trust client-side extension alone)
+    content_type = file.content_type or ""
+    expected_mime_prefix = ALLOWED_TYPES[ext]
+    if content_type and not content_type.lower().startswith(expected_mime_prefix):
+        raise HTTPException(
+            status_code=400,
+            detail=f"MIME type '{content_type}' does not match expected type for '{ext}'.",
+        )
+
+    # Sanitise filename to prevent path traversal and special char injection
+    safe_basename = _SAFE_FILENAME_RE.sub("_", os.path.basename(original_filename))
+    safe_name = f"{uuid.uuid4().hex[:12]}_{safe_basename}"
+
+    # Resolve final path and verify it stays within UPLOAD_DIR (path traversal guard)
     loan_upload_dir = UPLOAD_DIR / str(loan_id)
     loan_upload_dir.mkdir(parents=True, exist_ok=True)
+    target_path = (loan_upload_dir / safe_name).resolve()
+    if not str(target_path).startswith(str(UPLOAD_DIR)):
+        logger.error("Path traversal attempt detected: %s", target_path)
+        raise HTTPException(status_code=400, detail="Invalid file path.")
 
-    # Unique sanitized file path
-    safe_name = f"{uuid.uuid4().hex[:12]}_{original_filename.replace(' ', '_')}"
-    target_path = loan_upload_dir / safe_name
-
-    # Write file content to disk
+    # Write file content to disk in 1 MB chunks
     file_size = 0
     with target_path.open("wb") as buffer:
-        while chunk := await file.read(1024 * 1024):  # 1MB chunks
+        while chunk := await file.read(1024 * 1024):
             file_size += len(chunk)
             if file_size > MAX_FILE_SIZE:
                 target_path.unlink(missing_ok=True)
                 raise HTTPException(status_code=400, detail="File size exceeds maximum 15 MB limit")
             buffer.write(chunk)
+
+    logger.info("Document uploaded: loan_id=%d file=%s size=%d bytes", loan_id, safe_name, file_size)
 
     # Save DB record
     doc = LoanDocument(

@@ -6,10 +6,12 @@ Priority Chain: Gemini (free) → Groq (free) → Deterministic DTI fallback
 Never crashes. Never requires a paid API.
 """
 import json
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from app.models import LoanApplication
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 # ── Deterministic Rules (always available, no API needed) ──────────────────
@@ -24,7 +26,6 @@ def deterministic_assessment(loan: LoanApplication) -> dict:
     Returns a risk assessment dict based on DTI and income bands.
     """
     dti = calculate_dti(loan.requested_amount, loan.annual_income)
-    lti = loan.requested_amount / loan.annual_income  # Loan-to-Income
 
     if dti > 0.60:
         return {
@@ -48,14 +49,14 @@ def deterministic_assessment(loan: LoanApplication) -> dict:
         }
 
 
-# ── Gemini Provider (free tier) ────────────────────────────────────────────
+# ── Gemini Provider (google-genai SDK, free tier) ──────────────────────────
 
 async def _gemini_evaluate(loan: LoanApplication) -> dict:
     if not settings.gemini_api_key:
         raise ValueError("GEMINI_API_KEY not configured")
 
-    import google.generativeai as genai
-    genai.configure(api_key=settings.gemini_api_key)
+    from google import genai
+    client = genai.Client(api_key=settings.gemini_api_key)
 
     dti = calculate_dti(loan.requested_amount, loan.annual_income)
     prompt = f"""You are a financial underwriter. Evaluate this loan application and respond ONLY with valid JSON.
@@ -78,8 +79,10 @@ Rules:
 - DTI 0.40–0.60 → UNDER_REVIEW
 - DTI < 0.40 → APPROVED"""
 
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=prompt,
+    )
     text = response.text.strip()
 
     # Strip markdown code fences if present
@@ -137,11 +140,12 @@ async def evaluate_loan_risk(loan_id: int, db: AsyncSession):
     """
     loan = await db.get(LoanApplication, loan_id)
     if not loan:
+        logger.warning("evaluate_loan_risk: loan_id=%d not found", loan_id)
         return
 
     assessment = None
 
-    # Tier 1: Fast-fail deterministic check
+    # Tier 1: Fast-fail deterministic check for clear rejections
     dti = calculate_dti(loan.requested_amount, loan.annual_income)
     if dti > 0.60:
         assessment = deterministic_assessment(loan)
@@ -152,23 +156,23 @@ async def evaluate_loan_risk(loan_id: int, db: AsyncSession):
     # Tier 2: Gemini (free)
     try:
         assessment = await _gemini_evaluate(loan)
-        print(f"[RiskEngine] Gemini evaluated loan {loan_id}")
-    except Exception as e:
-        print(f"[RiskEngine] Gemini failed for loan {loan_id}: {e}")
+        logger.info("RiskEngine: Gemini evaluated loan_id=%d score=%s", loan_id, assessment.get("risk_score"))
+    except Exception as exc:
+        logger.warning("RiskEngine: Gemini failed for loan_id=%d: %s", loan_id, exc)
 
     # Tier 3: Groq (free)
     if assessment is None:
         try:
             assessment = await _groq_evaluate(loan)
-            print(f"[RiskEngine] Groq evaluated loan {loan_id}")
-        except Exception as e:
-            print(f"[RiskEngine] Groq failed for loan {loan_id}: {e}")
+            logger.info("RiskEngine: Groq evaluated loan_id=%d score=%s", loan_id, assessment.get("risk_score"))
+        except Exception as exc:
+            logger.warning("RiskEngine: Groq failed for loan_id=%d: %s", loan_id, exc)
 
     # Tier 4: Deterministic fallback (always works)
     if assessment is None:
         assessment = deterministic_assessment(loan)
         assessment["reasoning"] = "[Deterministic] " + assessment["reasoning"]
-        print(f"[RiskEngine] Using deterministic fallback for loan {loan_id}")
+        logger.info("RiskEngine: Using deterministic fallback for loan_id=%d", loan_id)
 
     _apply_assessment(loan, assessment)
     await db.commit()

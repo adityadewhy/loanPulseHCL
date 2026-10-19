@@ -4,6 +4,7 @@
 .env.*.local
 venv/
 .venv/
+node_modules/
 env/
 ENV/
 
@@ -31,6 +32,8 @@ wheels/
 
 # Testing & Coverage
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 .tox/
@@ -41,6 +44,8 @@ coverage.xml
 # User uploaded files (keep directory via .gitkeep)
 uploads/*
 !uploads/.gitkeep
+staticfiles/
+app/static/tailwind.css
 
 # Logs & Databases
 *.log

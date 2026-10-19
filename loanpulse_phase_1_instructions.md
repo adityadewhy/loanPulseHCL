@@ -1,5 +1,10 @@
 # LoanPulse: Phase 1 Backend Initialization
-# Objective: Build an asynchronous FastAPI backend connected to PostgreSQL via Docker, managed by Alembic migrations.
+
+> Historical phase instructions for the original FastAPI prototype. The current runtime uses Django; do not use the commands or stack below as the current runbook. See [README.md](README.md).
+
+> Historical implementation notes. The maintained application now uses Django and DATABASE_URL; Docker and this FastAPI/Alembic setup are no longer used. Follow [README.md](README.md) to run the current app.
+
+# Objective (historical): Build an asynchronous FastAPI backend connected to PostgreSQL via Docker, managed by Alembic migrations.
 
 ## Project Structure
 Please initialize the following directory structure:

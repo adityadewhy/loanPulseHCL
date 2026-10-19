@@ -1,8 +1,9 @@
-fastapi
-uvicorn[standard]
-sqlalchemy
-pydantic
-pydantic-settings
-asyncpg
-alembic
-openai
+Django~=5.2.0
+djangorestframework~=3.16.0
+gunicorn~=23.0
+whitenoise~=6.12
+psycopg[binary]~=3.2
+PyJWT~=2.10
+bcrypt~=4.2
+google-genai~=1.0
+groq~=0.30

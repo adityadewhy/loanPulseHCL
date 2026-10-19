@@ -1,12 +1,14 @@
 # LoanPulse — Already Done
 
-Last updated: 2026-10-15
+Last updated: 2026-10-20
+
+> The Phase 1–9 notes below record the original FastAPI/Alembic prototype. They are historical, not the current stack or runbook. Current setup and behavior are in [README.md](README.md).
 
 ---
 
 ## Phase 1 — Backend Foundation ✅
 - [x] FastAPI app created (`app/main.py`)
-- [x] PostgreSQL 15 via Docker Compose (`docker-compose.yml`)
+- [x] PostgreSQL through DATABASE_URL (Neon-compatible; no Docker runtime dependency)
 - [x] Async SQLAlchemy engine + session factory (`app/database.py`)
 - [x] Alembic initialized with async `env.py` (`alembic/`)
 - [x] `LoanApplication` ORM model created
@@ -40,7 +42,7 @@ Last updated: 2026-10-15
   - `POST /auth/register`
   - `POST /auth/login` (OAuth2 compatible form data)
   - `GET /auth/me`
-- [x] Default admin user seeded on startup: `admin@loanpulse.local` / `Admin123!`
+- [x] The historical prototype seeded a demo administrator. That behavior and its demo credentials are removed; the current Django app has no default account.
 
 ## Phase 4 — Disbursement & Repayment Engine ✅
 - [x] `app/services/repayment_engine.py`:
@@ -130,5 +132,16 @@ Last updated: 2026-10-15
   - Complete integration test covering document upload, listing, downloading, deep details inspection, CSV header/row verification, and deletion
   - Added `cleanup_db_pool` fixture in `tests/conftest.py` ensuring connection pool disposal across asyncpg test loops
   - **All 9 tests passing with 100% success!**
+
+## Django productionization and role workflows ✅
+- [x] Replaced the runtime with Django, Django REST Framework, ORM migrations, Gunicorn, and WhiteNoise.
+- [x] Added a borrower-only self-sign-up path that cannot assign staff roles, plus Django password validation and throttling.
+- [x] Linked applications to the borrower account and scoped application, notification, document, disbursement, and repayment reads to the owner.
+- [x] Added borrower application creation for home, vehicle, education, personal, and business loan types, with status history and repayment schedule tracking.
+- [x] Preserved the staff portfolio workflow for review, approval/rejection, disbursement, repayments, document management, and audit history.
+- [x] Added borrower and staff access-boundary tests; current suite is maintained in `tests/test_django_app.py`.
+- [x] Added borrower-only KARZai with a strict pre-model loan-topic allowlist, local rate/wait-time answers, 5/hour throttling, 120-token output cap, and cached model answers.
+- [x] Added borrower-facing submission feedback from the existing underwriting call; no extra AI call, no approval promise, and no unsupported wait estimate.
+- [x] Added optional borrower-consented Gemini KYC document quality review scoped to owned PDF/image documents, with 5 MB file limit, 2/hour throttling, 24-hour cache, non-decisional output, and no stored review result.
 
 

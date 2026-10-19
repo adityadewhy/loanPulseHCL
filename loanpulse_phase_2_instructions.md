@@ -1,5 +1,7 @@
 # LoanPulse: Phase 2 AI Risk Scoring & Automated Rules
 
+> Historical phase instructions for the original FastAPI prototype. The current runtime uses Django; see [README.md](README.md) for current AI behavior and commands.
+
 # Objective: Evolve the database to store risk metrics, integrate a financial heuristic (DTI ratio), and use OpenAI for automated underwriting via FastAPI background tasks.
 
 ## Step 1: Database Schema Evolution
