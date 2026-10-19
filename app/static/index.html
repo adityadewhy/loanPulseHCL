@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LoanPulse — VisionOS Liquid Glass Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=Google+Sans+Text:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Google Sans', 'Google Sans Text', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['Fira Code', 'monospace'],
+          },
+          colors: {
+            brand: {
+              400: '#38bdf8',
+              500: '#0284c7',
+              600: '#0369a1',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --glass-bg: rgba(18, 26, 43, 0.6);
+      --glass-bg-subtle: rgba(255, 255, 255, 0.04);
+      --glass-border: rgba(255, 255, 255, 0.12);
+      --glass-border-bright: rgba(255, 255, 255, 0.25);
+      --glass-highlight: rgba(255, 255, 255, 0.18);
+      --glass-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
+    }
+
+    body {
+      font-family: 'Google Sans', 'Google Sans Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #060911;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(56, 189, 248, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 90% 15%, rgba(168, 85, 247, 0.14) 0%, transparent 45%),
+        radial-gradient(circle at 50% 85%, rgba(16, 185, 129, 0.10) 0%, transparent 50%),
+        radial-gradient(circle at 75% 70%, rgba(244, 63, 94, 0.08) 0%, transparent 40%);
+      background-attachment: fixed;
+    }
+
+    /* Apple Liquid Glass Panel */
+    .glass-card {
+      background: rgba(18, 25, 41, 0.62);
+      backdrop-filter: blur(28px) saturate(190%);
+      -webkit-backdrop-filter: blur(28px) saturate(190%);
+      border: 1px solid var(--glass-border);
+      box-shadow: 
+        inset 0 1px 1px 0 var(--glass-highlight),
+        0 16px 36px -10px rgba(0, 0, 0, 0.55);
+      transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .glass-card:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .glass-card-interactive:hover {
+      transform: translateY(-2px);
+      box-shadow: 
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.3),
+        0 22px 45px -10px rgba(0, 0, 0, 0.7);
+    }
+
+    /* Glass Controls & Inputs */
+    .glass-input {
+      background: rgba(10, 15, 26, 0.55);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+      transition: all 0.2s ease;
+    }
+
+    .glass-input:focus {
+      outline: none;
+      border-color: rgba(56, 189, 248, 0.6);
+      background: rgba(10, 15, 26, 0.75);
+      box-shadow: 
+        inset 0 1px 2px rgba(0, 0, 0, 0.4),
+        0 0 0 3px rgba(56, 189, 248, 0.2);
+    }
+
+    /* Glass Buttons */
+    .glass-btn-primary {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.9) 0%, rgba(14, 165, 233, 0.75) 100%);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      box-shadow: 
+        inset 0 1px 1px rgba(255, 255, 255, 0.4),
+        0 8px 20px -4px rgba(14, 165, 233, 0.45);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .glass-btn-primary:hover {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 1) 0%, rgba(2, 132, 199, 0.9) 100%);
+      box-shadow: 
+        inset 0 1px 1px rgba(255, 255, 255, 0.5),
+        0 12px 25px -4px rgba(14, 165, 233, 0.6);
+      transform: translateY(-1px);
+    }
+
+    .glass-btn-subtle {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+      transition: all 0.2s ease;
+    }
+
+    .glass-btn-subtle:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+    }
+
+    /* Ambient pulse badge */
+    .glass-pulse {
+      animation: pulse-ring 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes pulse-ring {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.15); opacity: 0.7; }
+    }
+
+    /* Custom thin scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col lg:flex-row antialiased selection:bg-sky-500/30 selection:text-sky-200">
+
+  <!-- ================= AUTH MODAL (GLASS) ================= -->
+  <div id="authModal" class="fixed inset-0 bg-black/70 backdrop-blur-xl z-50 flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl max-w-md w-full p-6 sm:p-8 relative overflow-hidden">
+      <!-- Specular glow behind modal header -->
+      <div class="absolute -top-16 -left-16 w-44 h-44 bg-sky-500/25 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-16 -right-16 w-44 h-44 bg-purple-500/25 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="relative z-10">
+        <div class="flex items-center gap-3.5 mb-6">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-500 p-[1px] shadow-lg shadow-sky-500/30 flex items-center justify-center">
+            <div class="w-full h-full bg-slate-950/80 backdrop-blur-md rounded-[15px] flex items-center justify-center font-extrabold text-white text-lg tracking-wider">
+              LP
+            </div>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+              LoanMaster
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30">VISION</span>
+            </h2>
+            <p class="text-xs text-slate-400">Next-Gen Autonomous Credit & Lending</p>
+          </div>
+        </div>
+
+        <!-- Quick test credentials hint -->
+        <div class="mb-5 glass-card rounded-xl p-3 text-xs text-sky-200 border-sky-400/20">
+          <div class="font-bold text-sky-300 flex items-center gap-1.5 mb-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> Default Admin Credentials
+          </div>
+          <div class="font-mono text-[11px] text-slate-300">
+            Email: <code class="text-white bg-white/10 px-1 py-0.5 rounded">admin@loanpulse.local</code><br>
+            Password: <code class="text-white bg-white/10 px-1 py-0.5 rounded mt-1 inline-block">Admin123!</code>
+          </div>
+        </div>
+
+        <div id="loginForm">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Email Address</label>
+              <input id="loginEmail" type="email" value="admin@loanpulse.local" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-sm text-white" placeholder="admin@loanpulse.local">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Password</label>
+              <input id="loginPassword" type="password" value="Admin123!" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-sm text-white" placeholder="••••••••">
+            </div>
+            <button onclick="handleLogin()" class="glass-btn-primary w-full text-white font-bold py-3 rounded-xl text-sm transition mt-2">
+              Enter Workspace
+            </button>
+          </div>
+        </div>
+
+        <div id="authError" class="mt-4 text-xs text-rose-300 text-center glass-card border-rose-500/30 py-2 rounded-lg hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TOP NAVIGATION BAR (MOBILE & DESKTOP) ================= -->
+  <header class="lg:hidden glass-card sticky top-0 z-30 px-4 py-3 flex items-center justify-between border-b border-white/10">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-400 to-indigo-500 p-[1px] shadow-md shadow-sky-500/20">
+        <div class="w-full h-full bg-slate-950/80 rounded-[11px] flex items-center justify-center font-bold text-white text-sm">
+          LP
+        </div>
+      </div>
+      <div>
+        <h1 class="font-bold text-white text-sm leading-none tracking-tight">LoanMaster</h1>
+        <span class="text-[9px] text-sky-400 font-mono tracking-widest uppercase">Liquid Glass</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button onclick="triggerOverdueCheck()" title="Run batch check" class="glass-btn-subtle text-amber-300 p-2 rounded-xl text-xs flex items-center">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      </button>
+      <button onclick="handleLogout()" title="Logout" class="glass-btn-subtle text-slate-400 p-2 rounded-xl text-xs flex items-center">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= SIDEBAR (DESKTOP) ================= -->
+  <aside class="hidden lg:flex w-72 m-4 mr-0 glass-card rounded-3xl flex-col justify-between p-5 flex-shrink-0 z-20">
+    <div class="space-y-6">
+      <!-- Logo Branding -->
+      <div class="flex items-center gap-3.5 px-2 py-2">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-500 p-[1px] shadow-lg shadow-sky-500/30">
+          <div class="w-full h-full bg-slate-950/80 backdrop-blur-md rounded-[15px] flex items-center justify-center font-extrabold text-white text-base">
+            LP
+          </div>
+        </div>
+        <div>
+          <h1 class="font-extrabold text-white text-base tracking-tight leading-tight">LoanMaster</h1>
+          <div class="flex items-center gap-1.5 mt-0.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 glass-pulse"></span>
+            <span class="text-[10px] text-slate-400 font-mono tracking-wider uppercase">Online Core</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="space-y-1.5">
+        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-sm font-semibold transition glass-card border-white/20 text-white shadow-lg">
+          <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Dashboard
+        </button>
+
+        <button onclick="switchTab('applications')" id="nav-applications" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-sm font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Applications
+        </button>
+
+        <button onclick="switchTab('new-application')" id="nav-new-application" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-sm font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          New Loan Form
+        </button>
+
+        <button onclick="switchTab('repayments')" id="nav-repayments" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-sm font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Repayments
+        </button>
+
+        <button onclick="switchTab('notifications')" id="nav-notifications" class="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-sm font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition">
+          <div class="flex items-center gap-3">
+            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            Notifications
+          </div>
+          <span id="unreadBadge" class="bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs px-2.5 py-0.5 rounded-full font-mono">0</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- User Profile Glass Card -->
+    <div class="glass-card rounded-2xl p-3 flex items-center justify-between">
+      <div class="flex items-center gap-3 overflow-hidden">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-400 to-indigo-600 flex items-center justify-center text-xs font-extrabold text-white shadow-md shadow-sky-500/20" id="userAvatar">AD</div>
+        <div class="truncate">
+          <div class="text-xs font-bold text-white truncate" id="userName">Admin User</div>
+          <div class="text-[10px] text-sky-300 font-mono uppercase tracking-wider" id="userRole">ADMIN</div>
+        </div>
+      </div>
+      <button onclick="handleLogout()" title="Logout" class="text-slate-400 hover:text-rose-400 p-2 rounded-xl hover:bg-white/5 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN CONTENT AREA ================= -->
+  <main class="flex-1 p-4 sm:p-6 lg:p-8 pb-28 lg:pb-8 overflow-y-auto w-full">
+
+    <!-- Top Action Bar (Laptop) -->
+    <div class="glass-card rounded-2xl px-5 py-4 mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <h2 id="viewTitle" class="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Portfolio Dashboard</h2>
+        <p id="viewSubtitle" class="text-xs text-slate-400 mt-0.5">Real-time credit portfolio performance and risk metrics</p>
+      </div>
+      <div class="flex items-center gap-2.5 self-start sm:self-auto">
+        <button onclick="triggerOverdueCheck()" class="glass-btn-subtle text-xs text-amber-300 font-semibold px-3 py-2 rounded-xl flex items-center gap-2">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <span class="hidden sm:inline">Run Batch Check</span>
+          <span class="sm:hidden">Batch</span>
+        </button>
+        <button onclick="refreshCurrentTab()" class="glass-btn-primary text-xs text-white font-bold px-3.5 py-2 rounded-xl flex items-center gap-2">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <span>Refresh</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 1: DASHBOARD ================= -->
+    <div id="view-dashboard" class="space-y-6 sm:space-y-8">
+      <!-- KPI Cards Grid (Phone 1 col, Tablet 2 col, Laptop 4 col) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <div class="glass-card glass-card-interactive p-5 rounded-3xl relative overflow-hidden">
+          <div class="absolute -top-10 -right-10 w-24 h-24 bg-sky-500/15 rounded-full blur-2xl pointer-events-none"></div>
+          <span class="text-xs font-semibold text-slate-400">Total Applications</span>
+          <div class="text-3xl sm:text-4xl font-extrabold text-white mt-2 font-mono tracking-tight" id="kpiTotalApps">0</div>
+          <div class="text-[11px] text-sky-300 mt-2 flex items-center gap-1.5 font-medium">
+            <span class="w-2 h-2 rounded-full bg-sky-400 glass-pulse"></span> Active Pipeline
+          </div>
+        </div>
+
+        <div class="glass-card glass-card-interactive p-5 rounded-3xl relative overflow-hidden">
+          <div class="absolute -top-10 -right-10 w-24 h-24 bg-emerald-500/15 rounded-full blur-2xl pointer-events-none"></div>
+          <span class="text-xs font-semibold text-slate-400">Capital Disbursed</span>
+          <div class="text-3xl sm:text-4xl font-extrabold text-emerald-300 mt-2 font-mono tracking-tight" id="kpiDisbursed">$0</div>
+          <div class="text-[11px] text-emerald-400 mt-2 flex items-center gap-1.5 font-medium">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Active Portfolio
+          </div>
+        </div>
+
+        <div class="glass-card glass-card-interactive p-5 rounded-3xl relative overflow-hidden">
+          <div class="absolute -top-10 -right-10 w-24 h-24 bg-rose-500/15 rounded-full blur-2xl pointer-events-none"></div>
+          <span class="text-xs font-semibold text-slate-400">Overdue Installments</span>
+          <div class="text-3xl sm:text-4xl font-extrabold text-rose-300 mt-2 font-mono tracking-tight" id="kpiOverdue">0</div>
+          <div class="text-[11px] text-rose-400 mt-2 flex items-center gap-1.5 font-medium">
+            <span class="w-2 h-2 rounded-full bg-rose-400"></span> Delinquency Watch
+          </div>
+        </div>
+
+        <div class="glass-card glass-card-interactive p-5 rounded-3xl relative overflow-hidden">
+          <div class="absolute -top-10 -right-10 w-24 h-24 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none"></div>
+          <span class="text-xs font-semibold text-slate-400">Collection Rate</span>
+          <div class="text-3xl sm:text-4xl font-extrabold text-indigo-300 mt-2 font-mono tracking-tight" id="kpiCollection">100%</div>
+          <div class="text-[11px] text-indigo-300 mt-2 flex items-center gap-1.5 font-medium">
+            <span class="w-2 h-2 rounded-full bg-indigo-400"></span> On-Time Servicing
+          </div>
+        </div>
+      </div>
+
+      <!-- Lifecycle Distribution Grid -->
+      <div class="glass-card rounded-3xl p-6 sm:p-7">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2">
+            <span>Lending Pipeline Distribution</span>
+            <span class="text-[10px] font-mono text-slate-400 px-2 py-0.5 rounded-full bg-white/5 border border-white/10">REAL-TIME</span>
+          </h3>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4" id="lifecycleStats">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 2: APPLICATIONS ================= -->
+    <div id="view-applications" class="space-y-6 hidden">
+      <!-- Filters bar -->
+      <div class="glass-card rounded-2xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
+          <div class="relative flex-1">
+            <input type="text" id="appSearchInput" oninput="loadApplications()" placeholder="Search applicant name..." class="glass-input w-full rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500">
+          </div>
+          <select id="appStatusFilter" onchange="loadApplications()" class="glass-input rounded-xl px-3 py-2.5 text-xs text-white font-medium">
+            <option value="">All Statuses</option>
+            <option value="PENDING">PENDING</option>
+            <option value="UNDER_REVIEW">UNDER_REVIEW</option>
+            <option value="APPROVED">APPROVED</option>
+            <option value="REJECTED">REJECTED</option>
+            <option value="DISBURSED">DISBURSED</option>
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="CLOSED">CLOSED</option>
+            <option value="DEFAULTED">DEFAULTED</option>
+          </select>
+        </div>
+        <button onclick="switchTab('new-application')" class="glass-btn-primary font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          <span>Originate New Loan</span>
+        </button>
+      </div>
+
+      <!-- Applications Table Glass Container (Responsive Scroll) -->
+      <div class="glass-card rounded-3xl overflow-hidden shadow-2xl">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs min-w-[700px]">
+            <thead class="bg-white/[0.03] text-slate-400 uppercase font-mono text-[10px] tracking-wider border-b border-white/10">
+              <tr>
+                <th class="py-3.5 px-4 font-semibold">ID</th>
+                <th class="py-3.5 px-4 font-semibold">Applicant</th>
+                <th class="py-3.5 px-4 font-semibold">Income</th>
+                <th class="py-3.5 px-4 font-semibold">Requested</th>
+                <th class="py-3.5 px-4 font-semibold">DTI</th>
+                <th class="py-3.5 px-4 font-semibold">Status</th>
+                <th class="py-3.5 px-4 font-semibold">Risk Score</th>
+                <th class="py-3.5 px-4 text-right font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="applicationsTableBody" class="divide-y divide-white/[0.06] font-medium">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 3: NEW APPLICATION FORM ================= -->
+    <div id="view-new-application" class="max-w-2xl mx-auto space-y-6 hidden">
+      <div class="glass-card rounded-3xl p-6 sm:p-9 relative overflow-hidden shadow-2xl">
+        <div class="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+          <div>
+            <h3 class="text-lg sm:text-xl font-bold text-white tracking-tight">Loan Application Origination</h3>
+            <p class="text-xs text-slate-400 mt-1">Autonomous underwriting pipeline with live DTI triage</p>
+          </div>
+          <span class="text-xs font-mono px-3 py-1 rounded-full bg-sky-500/15 text-sky-300 border border-sky-400/30">AI-ENABLED</span>
+        </div>
+
+        <form id="newLoanForm" onsubmit="handleNewApplication(event)" class="space-y-4 sm:space-y-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Applicant Name *</label>
+              <input name="applicant_name" required type="text" placeholder="Johnathan Doe" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-xs text-white">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Email Address</label>
+              <input name="applicant_email" type="email" placeholder="john@example.com" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-xs text-white">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Phone Number</label>
+              <input name="applicant_phone" type="tel" placeholder="+1-555-0199" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-xs text-white">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Employment Type</label>
+              <select name="employment_type" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-xs text-white">
+                <option value="SALARIED">Salaried Employee</option>
+                <option value="SELF_EMPLOYED">Self-Employed / Business</option>
+                <option value="UNEMPLOYED">Unemployed</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Annual Income ($) *</label>
+              <input id="formIncome" name="annual_income" required type="number" step="0.01" min="1" placeholder="85000" oninput="updateDtiPreview()" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-xs text-white font-mono">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Requested Amount ($) *</label>
+              <input id="formAmount" name="requested_amount" required type="number" step="0.01" min="1" placeholder="25000" oninput="updateDtiPreview()" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-xs text-white font-mono">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Term (Months)</label>
+              <input name="requested_term_months" type="number" min="1" max="360" value="12" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-xs text-white font-mono">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Loan Purpose</label>
+              <select name="loan_purpose" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-xs text-white">
+                <option value="PERSONAL">Personal</option>
+                <option value="HOME">Home</option>
+                <option value="VEHICLE">Vehicle</option>
+                <option value="EDUCATION">Education</option>
+                <option value="BUSINESS">Business Expansion</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Dynamic Apple Glass DTI Meter Box -->
+          <div class="glass-card rounded-2xl p-4 flex items-center justify-between border-white/10">
+            <div>
+              <div class="text-xs font-semibold text-white">Live Debt-to-Income (DTI) Triage</div>
+              <div class="text-[11px] text-slate-400">Heuristic threshold: &gt;60% triggers automatic fast-fail</div>
+            </div>
+            <span id="dtiPreviewBadge" class="text-xs font-mono font-extrabold px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-400">—</span>
+          </div>
+
+          <!-- Optional KYC Document Upload Card -->
+          <div class="glass-card rounded-2xl p-4 border-white/10 space-y-2.5">
+            <label class="block text-xs font-semibold text-white flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+              Attach Initial KYC Document (Optional)
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <select name="initial_doc_type" id="initialDocType" class="glass-input w-full rounded-xl px-3 py-2 text-xs text-white">
+                <option value="ID_PROOF">ID Proof (Passport / DL)</option>
+                <option value="INCOME_PROOF">Income Proof (Salary Slip)</option>
+                <option value="BANK_STATEMENT">Bank Statement</option>
+              </select>
+              <input type="file" name="initial_doc_file" id="initialDocFile" class="text-xs text-slate-300 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20">
+            </div>
+          </div>
+
+          <button type="submit" class="glass-btn-primary w-full text-white font-bold py-3.5 rounded-xl text-xs sm:text-sm transition mt-2">
+            Submit Application to Underwriting
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 4: REPAYMENTS ================= -->
+    <div id="view-repayments" class="space-y-6 hidden">
+      <div class="glass-card rounded-3xl p-5 sm:p-7 shadow-2xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/10">
+          <div>
+            <h3 class="text-lg font-bold text-white tracking-tight">Repayment Servicing & Amortization</h3>
+            <p class="text-xs text-slate-400 mt-0.5">Select a loan to view and service monthly EMI installments</p>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <select id="repaymentLoanSelect" onchange="loadRepaymentSchedule(this.value)" class="glass-input text-xs text-white font-medium rounded-xl px-3.5 py-2.5 max-w-full sm:max-w-xs">
+              <option value="">Select a Disbursed Loan...</option>
+            </select>
+            <button id="exportCsvBtn" onclick="exportRepaymentCsv()" disabled class="glass-btn-subtle text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-40 disabled:pointer-events-none">
+              <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <span>Export CSV</span>
+            </button>
+            <button id="printRepaymentBtn" onclick="window.print()" class="glass-btn-subtle text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition">
+              <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+              <span>Print</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Loan summary stats grid (Glass metrics) -->
+        <div id="repaymentSummaryCard" class="hidden grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 glass-card p-4 sm:p-5 rounded-2xl font-mono text-xs">
+          <div><span class="text-slate-400 block text-[10px] uppercase font-sans font-semibold">TOTAL EMI VALUE</span><span id="repTotalEmi" class="text-white font-bold text-sm sm:text-base">$0</span></div>
+          <div><span class="text-slate-400 block text-[10px] uppercase font-sans font-semibold">TOTAL PAID</span><span id="repTotalPaid" class="text-emerald-300 font-bold text-sm sm:text-base">$0</span></div>
+          <div><span class="text-slate-400 block text-[10px] uppercase font-sans font-semibold">OUTSTANDING</span><span id="repOutstanding" class="text-amber-300 font-bold text-sm sm:text-base">$0</span></div>
+          <div><span class="text-slate-400 block text-[10px] uppercase font-sans font-semibold">ARREARS COUNT</span><span id="repOverdueCount" class="text-rose-400 font-bold text-sm sm:text-base">0</span></div>
+        </div>
+
+        <!-- Installments Table with horizontal scroll -->
+        <div class="rounded-2xl border border-white/10 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs min-w-[650px]">
+              <thead class="bg-white/[0.03] text-slate-400 font-mono text-[10px] uppercase tracking-wider border-b border-white/10">
+                <tr>
+                  <th class="py-3 px-3.5">#</th>
+                  <th class="py-3 px-3.5">Due Date</th>
+                  <th class="py-3 px-3.5">EMI Amount</th>
+                  <th class="py-3 px-3.5">Principal</th>
+                  <th class="py-3 px-3.5">Interest</th>
+                  <th class="py-3 px-3.5">Penalty</th>
+                  <th class="py-3 px-3.5">Status</th>
+                  <th class="py-3 px-3.5 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="repaymentsTableBody" class="divide-y divide-white/[0.05] font-mono">
+                <tr><td colspan="8" class="text-center py-8 text-slate-500">Select a loan above to inspect amortization schedule</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 5: NOTIFICATIONS ================= -->
+    <div id="view-notifications" class="space-y-6 hidden">
+      <div class="glass-card rounded-3xl p-5 sm:p-7 shadow-2xl">
+        <div class="flex items-center justify-between mb-5 pb-3 border-b border-white/10">
+          <h3 class="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+            <span>Notification & Dispatch Audit</span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">AUDIT LOG</span>
+          </h3>
+        </div>
+        <div id="notificationsList" class="space-y-3">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+    </div>
+
+  <!-- ================= LOAN APPLICATION DETAIL & AUDIT TIMELINE MODAL (GLASS) ================= -->
+  <div id="loanDetailModal" class="fixed inset-0 bg-black/80 backdrop-blur-2xl z-50 flex items-center justify-center p-3 sm:p-5 hidden overflow-y-auto">
+    <div class="glass-card rounded-3xl max-w-2xl w-full p-5 sm:p-7 relative shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
+      <div class="absolute -top-16 -right-16 w-48 h-48 bg-sky-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between pb-4 border-b border-white/10 relative z-10">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <h3 id="modalLoanId" class="text-base sm:text-lg font-bold text-white tracking-tight">Loan Application</h3>
+            <span id="modalLoanStatusBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold font-mono"></span>
+          </div>
+          <p id="modalApplicantSub" class="text-xs text-slate-400 mt-0.5"></p>
+        </div>
+        <button onclick="closeLoanDetailModal()" class="glass-btn-subtle p-2 rounded-xl text-slate-400 hover:text-white">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="overflow-y-auto space-y-4 py-4 text-xs pr-1 relative z-10">
+        <!-- Key Metrics Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono">
+          <div class="glass-card p-3 rounded-xl"><span class="text-[10px] text-slate-400 block font-sans">ANNUAL INCOME</span><span id="modalIncome" class="text-white font-bold text-xs sm:text-sm">$0</span></div>
+          <div class="glass-card p-3 rounded-xl"><span class="text-[10px] text-slate-400 block font-sans">REQUESTED AMOUNT</span><span id="modalAmount" class="text-white font-bold text-xs sm:text-sm">$0</span></div>
+          <div class="glass-card p-3 rounded-xl"><span class="text-[10px] text-slate-400 block font-sans">TERM</span><span id="modalTerm" class="text-white font-bold text-xs sm:text-sm">12 Mos</span></div>
+          <div class="glass-card p-3 rounded-xl"><span class="text-[10px] text-slate-400 block font-sans">PURPOSE</span><span id="modalPurpose" class="text-white font-bold text-xs sm:text-sm">Personal</span></div>
+        </div>
+
+        <!-- AI Risk Assessment Card -->
+        <div class="glass-card p-4 rounded-2xl border-white/10">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-bold text-white flex items-center gap-2">
+              <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              AI Underwriter Risk Score & Memo
+            </span>
+            <span id="modalRiskScore" class="font-mono font-extrabold text-xs px-2.5 py-0.5 rounded-full"></span>
+          </div>
+          <p id="modalRiskReasoning" class="text-slate-300 leading-relaxed text-xs bg-black/40 p-3 rounded-xl border border-white/5 font-mono whitespace-pre-line"></p>
+        </div>
+
+        <!-- KYC & Documents Section -->
+        <div class="glass-card p-4 rounded-2xl border-white/10 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-white flex items-center gap-2">
+              <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              Attached KYC Documents
+            </span>
+            <span id="modalDocCount" class="text-[11px] font-mono text-slate-400">0 attached</span>
+          </div>
+
+          <!-- Documents List -->
+          <div id="modalDocumentsList" class="space-y-2"></div>
+
+          <!-- Upload Form -->
+          <form id="docUploadForm" onsubmit="handleDocumentUpload(event)" class="pt-2 border-t border-white/5 flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+            <input type="hidden" id="docUploadLoanId">
+            <select id="docUploadType" class="glass-input rounded-xl px-2.5 py-2 text-[11px] text-white">
+              <option value="ID_PROOF">ID Proof (Passport / DL)</option>
+              <option value="INCOME_PROOF">Income Proof (Salary Slip)</option>
+              <option value="BANK_STATEMENT">Bank Statement</option>
+              <option value="COLLATERAL">Collateral Document</option>
+              <option value="OTHER">Other Proof</option>
+            </select>
+            <input id="docUploadFile" type="file" required class="text-[11px] text-slate-300 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 flex-1">
+            <button type="submit" class="glass-btn-primary px-3 py-2 rounded-xl text-white font-bold text-[11px] whitespace-nowrap">
+              Upload Proof
+            </button>
+          </form>
+        </div>
+
+        <!-- Audit Trail Timeline -->
+        <div class="glass-card p-4 rounded-2xl border-white/10 space-y-3">
+          <span class="font-bold text-white flex items-center gap-2">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Chronological Audit Trail
+          </span>
+          <div id="modalAuditTimeline" class="space-y-2 border-l-2 border-white/10 pl-3 ml-2"></div>
+        </div>
+      </div>
+
+      <!-- Modal Footer Actions -->
+      <div id="modalActionFooter" class="pt-3 border-t border-white/10 flex items-center justify-between gap-3 relative z-10">
+        <div id="modalActionButtons" class="flex items-center gap-2"></div>
+        <button onclick="closeLoanDetailModal()" class="glass-btn-subtle px-4 py-2 rounded-xl text-slate-300 font-semibold">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= DISBURSE MODAL (GLASS) ================= -->
+  <div id="disburseModal" class="fixed inset-0 bg-black/70 backdrop-blur-xl z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-card rounded-3xl max-w-md w-full p-6 sm:p-8 relative shadow-2xl overflow-hidden">
+      <div class="absolute -top-12 -right-12 w-36 h-36 bg-purple-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+      <div class="relative z-10">
+        <h3 class="text-lg font-bold text-white tracking-tight">Disburse Approved Loan</h3>
+        <p class="text-xs text-slate-400 mb-4" id="disburseLoanSubtitle">Loan #—</p>
+
+        <form id="disburseForm" onsubmit="handleDisburseSubmit(event)" class="space-y-3.5 text-xs">
+          <input type="hidden" id="disburseLoanId" name="loan_id">
+          <div>
+            <label class="block font-semibold text-slate-300 mb-1.5">Disbursement Amount ($)</label>
+            <input id="disburseAmount" name="disbursed_amount" required type="number" step="0.01" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-white font-mono">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-300 mb-1.5">Annual Interest Rate (%)</label>
+            <input name="interest_rate" required type="number" step="0.1" value="12.0" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-white font-mono">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-300 mb-1.5">Disbursement Date</label>
+            <input id="disburseDate" name="disbursement_date" required type="date" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-white font-mono">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-300 mb-1.5">Payment Method</label>
+            <select name="payment_method" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-white">
+              <option value="BANK_TRANSFER">Bank Transfer (Wire / ACH)</option>
+              <option value="CHEQUE">Corporate Cheque</option>
+              <option value="UPI">Real-Time Instant / UPI</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-300 mb-1.5">Bank Reference / TX ID</label>
+            <input name="bank_reference" type="text" placeholder="TXN-984210" class="glass-input w-full rounded-xl px-3.5 py-2.5 text-white font-mono">
+          </div>
+          <div class="flex gap-2.5 pt-3">
+            <button type="button" onclick="closeDisburseModal()" class="glass-btn-subtle flex-1 py-2.5 rounded-xl font-semibold text-slate-300">Cancel</button>
+            <button type="submit" class="glass-btn-primary flex-1 py-2.5 rounded-xl font-bold text-white">Confirm</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= FLOATING GLASS BOTTOM NAVIGATION (MOBILE PHONES) ================= -->
+  <nav class="lg:hidden fixed bottom-3 left-3 right-3 z-40 glass-card rounded-2xl px-2 py-2 flex items-center justify-around shadow-2xl border border-white/20">
+    <button onclick="switchTab('dashboard')" id="mob-dashboard" class="flex flex-col items-center justify-center p-2 rounded-xl text-sky-400 transition">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span class="text-[9px] font-semibold mt-0.5">Overview</span>
+    </button>
+    <button onclick="switchTab('applications')" id="mob-applications" class="flex flex-col items-center justify-center p-2 rounded-xl text-slate-400 transition">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <span class="text-[9px] font-semibold mt-0.5">Loans</span>
+    </button>
+    <button onclick="switchTab('new-application')" id="mob-new-application" class="flex flex-col items-center justify-center p-2 rounded-xl text-slate-400 transition">
+      <div class="w-7 h-7 rounded-full bg-sky-500/30 border border-sky-400/50 flex items-center justify-center text-sky-300">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      </div>
+      <span class="text-[9px] font-semibold mt-0.5">Originate</span>
+    </button>
+    <button onclick="switchTab('repayments')" id="mob-repayments" class="flex flex-col items-center justify-center p-2 rounded-xl text-slate-400 transition">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <span class="text-[9px] font-semibold mt-0.5">Repay</span>
+    </button>
+    <button onclick="switchTab('notifications')" id="mob-notifications" class="flex flex-col items-center justify-center p-2 rounded-xl text-slate-400 transition relative">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+      <span class="text-[9px] font-semibold mt-0.5">Alerts</span>
+      <span id="mobUnreadDot" class="absolute top-1.5 right-2.5 w-2 h-2 rounded-full bg-purple-400 hidden"></span>
+    </button>
+  </nav>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

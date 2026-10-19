@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoanPulse — Apple Liquid Glass & Responsive UI Engineering Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=Google+Sans+Text:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #07090e;
+            --glass-bg: rgba(18, 25, 41, 0.65);
+            --glass-blur: 28px;
+            --glass-saturate: 190%;
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --glass-highlight: rgba(255, 255, 255, 0.22);
+            --accent-cyan: #38bdf8;
+            --accent-purple: #c084fc;
+            --accent-emerald: #34d399;
+            --accent-rose: #fb7185;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Google Sans', 'Google Sans Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding-bottom: 90px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Ambient Apple Glow Orbs */
+        .ambient-mesh {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.22;
+        }
+        .orb-1 { width: 550px; height: 550px; background: radial-gradient(circle, #0284c7 0%, transparent 70%); top: -150px; left: -100px; }
+        .orb-2 { width: 650px; height: 650px; background: radial-gradient(circle, #7c3aed 0%, transparent 70%); top: 40%; right: -200px; }
+        .orb-3 { width: 450px; height: 450px; background: radial-gradient(circle, #059669 0%, transparent 70%); bottom: -100px; left: 25%; }
+
+        /* Glassmorphism System Classes */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+            -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+            border: 1px solid var(--glass-border);
+            box-shadow: 
+                inset 0 1px 1px 0 var(--glass-highlight),
+                0 16px 36px -10px rgba(0, 0, 0, 0.55);
+            border-radius: 20px;
+        }
+
+        .glass-btn {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.85) 0%, rgba(14, 165, 233, 0.7) 100%);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            box-shadow: 
+                inset 0 1px 1px rgba(255, 255, 255, 0.4),
+                0 8px 20px -4px rgba(14, 165, 233, 0.45);
+            color: #ffffff;
+            font-weight: 700;
+            padding: 10px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            font-size: 13px;
+        }
+        .glass-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                inset 0 1px 1px rgba(255, 255, 255, 0.55),
+                0 14px 28px -4px rgba(14, 165, 233, 0.6);
+        }
+
+        .glass-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 600;
+            backdrop-filter: blur(12px);
+        }
+        .badge-cyan { background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.35); color: #7dd3fc; }
+        .badge-purple { background: rgba(192, 132, 252, 0.15); border: 1px solid rgba(192, 132, 252, 0.35); color: #e9d5ff; }
+        .badge-emerald { background: rgba(52, 211, 153, 0.15); border: 1px solid rgba(52, 211, 153, 0.35); color: #6ee7b7; }
+        .badge-rose { background: rgba(251, 113, 133, 0.15); border: 1px solid rgba(251, 113, 133, 0.35); color: #fecdd3; }
+
+        /* Layout */
+        .wrapper {
+            position: relative;
+            z-index: 1;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        header {
+            margin-bottom: 36px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 24px 28px;
+        }
+
+        .header-title h1 {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-title p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .grid-2, .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        .card-title {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        p.desc {
+            color: var(--text-secondary);
+            font-size: 13.5px;
+            line-height: 1.65;
+            margin-bottom: 16px;
+        }
+
+        /* Code Blocks */
+        pre {
+            background: rgba(6, 9, 15, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 16px;
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            color: #e2e8f0;
+            line-height: 1.5;
+            margin: 12px 0;
+        }
+
+        .hl-prop { color: #38bdf8; }
+        .hl-val { color: #f472b6; }
+        .hl-fn { color: #a78bfa; }
+        .hl-com { color: #64748b; font-style: italic; }
+
+        /* Interactive Sandbox Section */
+        .sandbox-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-top: 16px;
+        }
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 13px;
+        }
+        .control-row label {
+            color: var(--text-secondary);
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            flex: 1;
+        }
+        .control-row input[type="range"] {
+            flex: 1.5;
+            accent-color: #38bdf8;
+        }
+        .control-val {
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            color: #38bdf8;
+            width: 55px;
+            text-align: right;
+        }
+
+        .interactive-preview-box {
+            position: relative;
+            height: 160px;
+            border-radius: 16px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+        }
+        .preview-bg-shapes {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+        }
+        .shape-circle {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f43f5e, #fb923c);
+        }
+        .shape-square {
+            width: 60px;
+            height: 60px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            transform: rotate(25deg);
+        }
+        .preview-glass-target {
+            position: relative;
+            z-index: 2;
+            width: 80%;
+            padding: 16px 20px;
+            border-radius: 14px;
+            text-align: center;
+            transition: all 0.1s ease;
+        }
+
+        /* Responsive Feature Comparison Table */
+        .resp-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 14px;
+        }
+        .resp-table th {
+            text-align: left;
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: #94a3b8;
+            font-weight: 600;
+        }
+        .resp-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Ambient Glow Orbs -->
+    <div class="ambient-mesh">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="wrapper">
+
+        <!-- Header -->
+        <header class="glass-panel">
+            <div class="header-title">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                    <span class="glass-badge badge-cyan">VisionOS / iOS 18 Design System</span>
+                    <span class="glass-badge badge-emerald">Mobile & Laptop Optimized</span>
+                </div>
+                <h1>LoanPulse: Apple Liquid Glass & Responsive UI Architecture</h1>
+                <p>Interactive real-time engineering guide explaining glass physics, CSS specular highlights, and responsive ergonomics.</p>
+            </div>
+            <div>
+                <a href="http://localhost:8000" target="_blank" class="glass-btn">
+                    <span>Open Live LoanPulse App</span>
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                </a>
+            </div>
+        </header>
+
+        <!-- Section 1: Glassmorphism Science & Interactive Sandbox -->
+        <div class="grid-2">
+            <!-- Concept Card -->
+            <div class="glass-panel card-body">
+                <div class="card-title">
+                    <svg width="20" height="20" fill="none" stroke="#38bdf8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    <span>The Physics of Apple's Liquid Glass</span>
+                </div>
+                <p class="desc">
+                    Unlike standard translucent CSS (which looks muddy or flat), Apple's modern Glassmorphism (VisionOS, iOS 18, macOS Sonoma) relies on <strong>four concurrent optical phenomena</strong>:
+                </p>
+                <ol style="margin-left: 20px; font-size: 13px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 8px;">
+                    <li><strong>Backdrop Saturation Boost</strong>: <code>saturate(190%)</code> prevents blur from draining background colors, keeping them vivid and luminous.</li>
+                    <li><strong>Specular Edge Highlighting</strong>: Simulated with dual borders: a soft outer white outline and a sharp top inner shadow (<code>inset 0 1px 1px var(--glass-highlight)</code>) recreating physical light refraction at the bevel.</li>
+                    <li><strong>Ambient Color Radiance</strong>: Background radial gradients that bleed through the blur to give depth without needing static backgrounds.</li>
+                    <li><strong>Translucent Jewel Badges</strong>: Subtle colored translucent pills with colored glow drops that give immediate status recognition without visual clutter.</li>
+                </ol>
+
+                <pre><code><span class="hl-com">/* Core Apple Liquid Glass Formula */</span>
+<span class="hl-prop">background</span>: <span class="hl-val">rgba(18, 25, 41, 0.62)</span>;
+<span class="hl-prop">backdrop-filter</span>: <span class="hl-fn">blur</span>(<span class="hl-val">28px</span>) <span class="hl-fn">saturate</span>(<span class="hl-val">190%</span>);
+<span class="hl-prop">-webkit-backdrop-filter</span>: <span class="hl-fn">blur</span>(<span class="hl-val">28px</span>) <span class="hl-fn">saturate</span>(<span class="hl-val">190%</span>);
+<span class="hl-prop">border</span>: <span class="hl-val">1px solid rgba(255, 255, 255, 0.12)</span>;
+<span class="hl-prop">box-shadow</span>: 
+  <span class="hl-prop">inset</span> <span class="hl-val">0 1px 1px 0 rgba(255, 255, 255, 0.25)</span>,
+  <span class="hl-val">0 16px 36px -10px rgba(0, 0, 0, 0.55)</span>;</code></pre>
+            </div>
+
+            <!-- Interactive Sandbox Card -->
+            <div class="glass-panel card-body">
+                <div class="card-title">
+                    <svg width="20" height="20" fill="none" stroke="#c084fc" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                    <span>Interactive Glass Physics Lab</span>
+                </div>
+                <p class="desc">
+                    Tweak the parameters below to see in real-time how backdrop blur, saturation, and specular highlights alter the physical perception of glass:
+                </p>
+
+                <div class="sandbox-controls">
+                    <div class="control-row">
+                        <label>Blur Radius</label>
+                        <input id="sliderBlur" type="range" min="0" max="60" value="28" oninput="updateGlassSandbox()">
+                        <span id="valBlur" class="control-val">28px</span>
+                    </div>
+                    <div class="control-row">
+                        <label>Color Saturation</label>
+                        <input id="sliderSat" type="range" min="100" max="300" value="190" oninput="updateGlassSandbox()">
+                        <span id="valSat" class="control-val">190%</span>
+                    </div>
+                    <div class="control-row">
+                        <label>Background Opacity</label>
+                        <input id="sliderAlpha" type="range" min="10" max="95" value="62" oninput="updateGlassSandbox()">
+                        <span id="valAlpha" class="control-val">0.62</span>
+                    </div>
+                    <div class="control-row">
+                        <label>Specular Top Light</label>
+                        <input id="sliderLight" type="range" min="0" max="60" value="25" oninput="updateGlassSandbox()">
+                        <span id="valLight" class="control-val">0.25</span>
+                    </div>
+                </div>
+
+                <div class="interactive-preview-box">
+                    <div class="preview-bg-shapes">
+                        <div class="shape-circle"></div>
+                        <div class="shape-square"></div>
+                    </div>
+                    <div id="sandboxTarget" class="preview-glass-target">
+                        <span style="font-weight: 800; font-size: 15px; color: #fff; display: block;">Interactive Frosted Bevel</span>
+                        <span style="font-size: 11px; color: #cbd5e1; font-family: 'Fira Code', monospace;">Refracting Background Elements</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Mobile vs Desktop Responsive Architecture -->
+        <div class="glass-panel card-body" style="margin-bottom: 24px;">
+            <div class="card-title">
+                <svg width="20" height="20" fill="none" stroke="#34d399" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                <span>Dual-Screen Ergonomics: Phone vs Laptop/Desktop Strategy</span>
+            </div>
+            <p class="desc">
+                Enterprise lending software is frequently accessed both at office workstations (laptops/external monitors) and on the move (credit officers visiting loan applicants in the field with smartphones). Here is how LoanPulse adapts:
+            </p>
+
+            <table class="resp-table">
+                <thead>
+                    <tr>
+                        <th>UI Dimension</th>
+                        <th>Laptop / Desktop (&gt;1024px)</th>
+                        <th>Mobile Phones (&lt;1024px)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Primary Navigation</strong></td>
+                        <td>Floating left glass sidebar (<code>w-72</code>), persistent brand logo, server pulse status, officer user pill.</td>
+                        <td>Floating bottom glass dock (<code>fixed bottom-3 left-3 right-3</code>) with 5 quick-switch thumb targets and unread alerts dot.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>KPI Metrics Grid</strong></td>
+                        <td>4-column wide grid (<code>grid-cols-4</code>) showing portfolio numbers, capital disbursed, and collection rates side-by-side.</td>
+                        <td>Single / 2-column stacked grid (<code>grid-cols-2</code>) for thumb-friendly scrolling without horizontal compression.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Origination Form</strong></td>
+                        <td>2-column grid layout for applicant data, income, and purpose with real-time DTI calculator right-aligned.</td>
+                        <td>Single-column vertical stack with full-width touch-target inputs (<code>min-h-[44px]</code>) and fixed top DTI badge.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Amortization Tables</strong></td>
+                        <td>Full-width tabular rows showing 8 installment attributes, principal/interest split, and arrears markers.</td>
+                        <td>Touch-scrollable horizontal glass wrapper (<code>overflow-x-auto</code>) with <code>pb-28</code> safe padding to clear the bottom dock.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Section 3: State Synchronization & Architecture -->
+        <div class="grid-3">
+            <div class="glass-panel card-body">
+                <div class="card-title" style="font-size: 15px;">
+                    <span class="glass-badge badge-cyan">Navigation Sync</span>
+                </div>
+                <p class="desc">
+                    When the user taps any tab, <code>switchTab(tabId)</code> activates glass glow classes on both desktop (<code>#nav-${tab}</code>) and mobile (<code>#mob-${tab}</code>) without reloading or de-syncing.
+                </p>
+                <pre><code><span class="hl-com">// Synchronized Tab Switching</span>
+<span class="hl-fn">switchTab</span>(tabId) {
+  tabs.<span class="hl-fn">forEach</span>(t =&gt; {
+    <span class="hl-prop">const</span> desk = <span class="hl-fn">getEl</span>(<span class="hl-val">`#nav-${t}`</span>);
+    <span class="hl-prop">const</span> mob  = <span class="hl-fn">getEl</span>(<span class="hl-val">`#mob-${t}`</span>);
+    <span class="hl-com">/* toggle glass classes on both */</span>
+  });
+}</code></pre>
+            </div>
+
+            <div class="glass-panel card-body">
+                <div class="card-title" style="font-size: 15px;">
+                    <span class="glass-badge badge-purple">Real-Time Mobile Badge</span>
+                </div>
+                <p class="desc">
+                    Unread credit notifications are polled asynchronously. The desktop sidebar displays a numeric counter, while the mobile bottom dock illuminates a glowing ambient purple indicator dot.
+                </p>
+                <pre><code><span class="hl-com">// Mobile alert dot indicator</span>
+<span class="hl-prop">if</span> (count &gt; 0) {
+  mobDot.classList.<span class="hl-fn">remove</span>(<span class="hl-val">"hidden"</span>);
+} <span class="hl-prop">else</span> {
+  mobDot.classList.<span class="hl-fn">add</span>(<span class="hl-val">"hidden"</span>);
+}</code></pre>
+            </div>
+
+            <div class="glass-panel card-body">
+                <div class="card-title" style="font-size: 15px;">
+                    <span class="glass-badge badge-emerald">Safe Area Protection</span>
+                </div>
+                <p class="desc">
+                    To prevent floating bottom navigation docks from obscuring bottom rows in data tables or form action buttons, pages use mobile-aware padding: <code>pb-28 lg:pb-8</code>.
+                </p>
+                <pre><code><span class="hl-com">&lt;!-- Mobile safe padding pattern --&gt;</span>
+&lt;<span class="hl-prop">div</span> <span class="hl-prop">class</span>=<span class="hl-val">"p-4 lg:p-6 pb-28 lg:pb-8"</span>&gt;
+  <span class="hl-com">&lt;!-- Safe from dock collision --&gt;</span>
+&lt;/<span class="hl-prop">div</span>&gt;</code></pre>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function updateGlassSandbox() {
+            const blur = document.getElementById('sliderBlur').value;
+            const sat = document.getElementById('sliderSat').value;
+            const alpha = document.getElementById('sliderAlpha').value / 100;
+            const light = document.getElementById('sliderLight').value / 100;
+
+            document.getElementById('valBlur').textContent = `${blur}px`;
+            document.getElementById('valSat').textContent = `${sat}%`;
+            document.getElementById('valAlpha').textContent = alpha.toFixed(2);
+            document.getElementById('valLight').textContent = light.toFixed(2);
+
+            const target = document.getElementById('sandboxTarget');
+            target.style.background = `rgba(18, 25, 41, ${alpha})`;
+            target.style.backdropFilter = `blur(${blur}px) saturate(${sat}%)`;
+            target.style.webkitBackdropFilter = `blur(${blur}px) saturate(${sat}%)`;
+            target.style.border = `1px solid rgba(255, 255, 255, ${Math.min(0.4, alpha * 0.3 + 0.05)})`;
+            target.style.boxShadow = `inset 0 1px 1px 0 rgba(255, 255, 255, ${light}), 0 16px 36px -10px rgba(0, 0, 0, 0.55)`;
+        }
+
+        // Initialize sandbox on load
+        window.addEventListener('DOMContentLoaded', () => {
+            updateGlassSandbox();
+        });
+    </script>
+</body>
+</html>
